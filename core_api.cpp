@@ -54,7 +54,7 @@ int nextThread(Core* core, int curr_thread, int _switch){
 	int index;
 	for(int i = 0 ; i < core->thread_count ; i++){
 		index = (iter + i) % core->thread_count;
-		if(core->working_threads[index] && core->thread_pool[index].is_availble == 0){
+		if(core->working_threads[index] && core->thread_pool[index].is_availble <= 0){
 			core->thread_pool[curr_thread].cycles_count += _switch;
 			return index;
 		}
@@ -79,10 +79,10 @@ bool workingThreadsLeft(Core* core){
 	return FALSE;
 }
 
-void tickAllCmd(Core* core){
+void tickAllCmd(Core* core, int _switch){
 	for(int i = 0 ; i < core->thread_count ; i++){
 		if(core->thread_pool[i].is_availble > 0){
-			core->thread_pool[i].is_availble--;
+			core->thread_pool[i].is_availble -= _switch;
 		}
 	}
 }
@@ -104,7 +104,6 @@ void CORE_BlockedMT() {
 
 	int working_thread = 0;
 	int inst_count = 0;
-	int cycle_count = 0;
 	int src_addr;
 	int dst_addr;
 	int tmp;
@@ -126,48 +125,56 @@ void CORE_BlockedMT() {
 				thread.cycles_count++;
 				tmp = working_thread;
 				working_thread = nextThread(&blocked_core, working_thread, _switch);
+				if(tmp != working_thread) tickAllCmd(&blocked_core, _switch);
 				if(working_thread == -1){
 					working_thread = tmp;
 				}
+				tickAllCmd(&blocked_core, 1);
 				break;
 			case CMD_NOP:
 				thread.cycles_count++;
 				blocked_core.thread_pool[working_thread].rip += 1;
+				tickAllCmd(&blocked_core, 1);
 				break;
 			case CMD_ADD:     // dst <- src1 + src2
 				inst_count++;
 				thread.cycles_count++;
 				*dst_reg = src1_reg + src2_reg_or_imm;
 				blocked_core.thread_pool[working_thread].rip += 1;
+				tickAllCmd(&blocked_core, 1);
 				break;
 			case CMD_SUB:     // dst <- src1 - src2
 				inst_count++;
 				thread.cycles_count++;
 				*dst_reg = src1_reg - src2_reg_or_imm;
 				blocked_core.thread_pool[working_thread].rip += 1;
+				tickAllCmd(&blocked_core, 1);
 				break;
 			case CMD_ADDI:    // dst <- src1 + imm
 				inst_count++;
 				thread.cycles_count++;
 				*dst_reg = src1_reg + src2_reg_or_imm;
 				blocked_core.thread_pool[working_thread].rip += 1;
+				tickAllCmd(&blocked_core, 1);
 				break;
 			case CMD_SUBI:    // dst <- src1 - imm
 				inst_count++;
 				thread.cycles_count++;
 				*dst_reg = src1_reg - src2_reg_or_imm;
 				blocked_core.thread_pool[working_thread].rip += 1;
+				tickAllCmd(&blocked_core, 1);
 				break;
 			case CMD_LOAD:    // dst <- Mem[src1 + src2]  (src2 may be an immediate)
 				inst_count++;
 				thread.cycles_count += 1;
-				thread.is_availble = load_latency + 2;
+				thread.is_availble = load_latency + 1;
 				src_addr = src1_reg + src2_reg_or_imm;
 				SIM_MemDataRead(src_addr, dst_reg);
 				blocked_core.thread_pool[working_thread].rip += 1;
 				tmp = working_thread;
+				tickAllCmd(&blocked_core, 1);
 				working_thread = nextThread(&blocked_core, working_thread, _switch);
-				tickAllCmd(&blocked_core);
+				if(tmp != working_thread) tickAllCmd(&blocked_core, _switch);
 				if(working_thread == -1){
 					working_thread = tmp;
 				}
@@ -175,13 +182,14 @@ void CORE_BlockedMT() {
 			case CMD_STORE:   // Mem[dst + src2] <- src1  (src2 may be an immediate)
 				inst_count++;
 				thread.cycles_count += 1;
-				thread.is_availble = store_latency + 2;
+				thread.is_availble = store_latency + 1;
 				dst_addr = *dst_reg + src2_reg_or_imm;
 				SIM_MemDataWrite(dst_addr, src1_reg);
 				blocked_core.thread_pool[working_thread].rip += 1;
 				tmp = working_thread;
+				tickAllCmd(&blocked_core, 1);
 				working_thread = nextThread(&blocked_core, working_thread, _switch);
-				tickAllCmd(&blocked_core);
+				if(tmp != working_thread) tickAllCmd(&blocked_core, _switch);
 				if(working_thread == -1){
 					working_thread = tmp;
 				}
@@ -190,15 +198,15 @@ void CORE_BlockedMT() {
 				inst_count++;
 				thread.cycles_count++;
 				blocked_core.working_threads[working_thread] = FALSE;
+				tickAllCmd(&blocked_core, 1);
 				working_thread = nextThread(&blocked_core, working_thread, _switch);
-				tickAllCmd(&blocked_core);
+				if(tmp != working_thread) tickAllCmd(&blocked_core, _switch);
 				if(working_thread == -1){
 					blocked_core.inst_count = inst_count;
 					return;
 				}
 				break;
 		}
-		tickAllCmd(&blocked_core);
 	}
 	blocked_core.inst_count = inst_count;
 }
@@ -280,7 +288,7 @@ void CORE_FinegrainedMT(){
 				fine_grained_core.working_threads[working_thread] = FALSE;
 				break;
 		}
-		tickAllCmd(&fine_grained_core);
+		tickAllCmd(&fine_grained_core, 1);
 		tmp = working_thread;
 		working_thread = nextThread(&fine_grained_core, working_thread, 0);
 		if(working_thread == -1){
