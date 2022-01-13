@@ -5,7 +5,8 @@
 #include "sim_api.h"
 
 int main(int argc, char const *argv[]){
-	char const *memFname = argv[1];
+	// char const *memFname = argv[1];
+	char const memFname[300] = {"change me"};213213123
 
 	if (SIM_MemReset(memFname) != 0) {
 		fprintf(stderr, "Failed initializing memory simulator!\n");
