@@ -42,25 +42,6 @@ typedef struct _regs {
 	int reg[REGS_COUNT];
 } tcontext;
 
-typedef struct{
-	int thread_id;
-	int is_availble;
-	tcontext context;
-	uint32_t rip;
-	uint32_t cycles_count; 
-}thread_args;
-
-typedef struct{
-	thread_args* thread_pool;
-	bool* working_threads;
-	int thread_count;
-	int inst_count;
-}Core;
-
-Core CreateCore(int thread_count);
-
-void coreDestroy(Core* core);
-
 /* Simulates blocked MT and fine-grained MT behavior, respectively */
 void CORE_BlockedMT();
 void CORE_FinegrainedMT();

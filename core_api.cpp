@@ -4,36 +4,50 @@
 #include "sim_api.h"
 #include <stdio.h>
 
+class thread_args{
+public:
+	int thread_id;
+	int is_availble;
+	tcontext context;
+	uint32_t rip;
+	uint32_t cycles_count;
+	thread_args();
+	~thread_args() = default;
+};
+
+thread_args::thread_args():thread_id(0), is_availble(0), rip(0), cycles_count(0){
+	for (int i=0; i<REGS_COUNT; i++) {
+		context.reg[i] = 0;
+	}
+}
+
+class Core{
+public:
+	thread_args* thread_pool;
+	bool* working_threads;
+	int thread_count;
+	int inst_count;
+	Core(int thread_count);
+	~Core() = default;
+};
+
+Core::Core(int thread_count = 0): thread_count(thread_count), inst_count(0) {
+	working_threads = new bool[thread_count];
+	thread_pool = new thread_args[thread_count];
+	for(int i = 0 ; i < thread_count ; i++){	
+		thread_pool[i].thread_id = i;
+		thread_pool[i].is_availble = 0;
+		for(int j = 0 ; j < REGS_COUNT ; j++){
+			thread_pool[i].context.reg[j] = 0;
+		}
+		thread_pool[i].rip = 0;
+		thread_pool[i].cycles_count = 0;
+		working_threads[i] = TRUE;
+	}
+}
+
 Core blocked_core;
 Core fine_grained_core;
-
-Core CreateCore(int thread_count){
-	Core* core = (Core*)malloc(sizeof(Core));
-	if(core == NULL){
-		perror("malloc");
-		exit(-1);
-	}
-	core->thread_pool = (thread_args*)malloc(sizeof(thread_args) * thread_count);
-	core->working_threads = (bool*)malloc(sizeof(bool) * thread_count);
-	for(int i = 0 ; i < thread_count ; i++){	
-		core->thread_pool[i].thread_id = i;
-		core->thread_pool[i].is_availble = 0;
-		for(int j = 0 ; j < REGS_COUNT ; j++){
-			core->thread_pool[i].context.reg[j] = 0;
-		}
-		core->thread_pool[i].rip = 0;
-		core->thread_pool[i].cycles_count = 0;
-		core->working_threads[i] = TRUE;
-	}
-	core->thread_count = thread_count;
-	return *core;
-}
-
-void coreDestroy(Core* core){
-	free(core->thread_pool);
-	free(core->working_threads);
-	free(core);
-}
 
 int nextThread(Core* core, int curr_thread, int _switch){
 	int iter = (curr_thread + 1) % core->thread_count;
@@ -55,8 +69,6 @@ int nextThread(Core* core, int curr_thread, int _switch){
 	}
 	return -1;
 }
-
-
 
 bool workingThreadsLeft(Core* core){
 	for(int i = 0 ; i < core->thread_count ; i++){
@@ -83,13 +95,12 @@ int countCycles(Core* core){
 	return cycles;
 }
 
-
 void CORE_BlockedMT() {
 	int load_latency = SIM_GetLoadLat();
 	int store_latency = SIM_GetStoreLat();
 	int _switch = SIM_GetSwitchCycles(); //the cycles that switch between cycles takes
 	int thread_number = SIM_GetThreadsNum();
-	blocked_core = CreateCore(thread_number);
+	blocked_core = Core(thread_number);
 
 	int working_thread = 0;
 	int inst_count = 0;
@@ -194,7 +205,7 @@ void CORE_FinegrainedMT(){
 	// int _switch = SIM_GetSwitchCycles(); //the cycles that switch between cycles takes
 	int thread_number = SIM_GetThreadsNum();
 
-	fine_grained_core = CreateCore(thread_number);
+	fine_grained_core = Core(thread_number);
 
 	int working_thread = 0;
 	int inst_count = 0;
@@ -282,20 +293,18 @@ void CORE_FinegrainedMT(){
 double CORE_BlockedMT_CPI(){
 	double inst = blocked_core.inst_count;
 	double cycle = countCycles(&blocked_core);
-	coreDestroy(&blocked_core);
 	return cycle / inst;
 }
 
 double CORE_FinegrainedMT_CPI(){
 	double inst = fine_grained_core.inst_count;
 	double cycle = countCycles(&fine_grained_core);	
-	coreDestroy(&fine_grained_core);
 	return cycle / inst;
 }
 
 void CORE_BlockedMT_CTX(tcontext* context, int threadid){
 	for(int i = 0 ; i < REGS_COUNT ; i++){
-		context->reg[i] = blocked_core.thread_pool[threadid].context.reg[i];
+		context[threadid].reg[i] = blocked_core.thread_pool[threadid].context.reg[i];
 	}
 }
 
