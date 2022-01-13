@@ -1,0 +1,17 @@
+[
+{
+  "directory": "D:/Limud/Third_year/Computer_structure/HW4/build",
+  "command": "gcc   -std=c99  -g -o CMakeFiles\\HW3.dir\\main.c.obj -c D:\\Limud\\Third_year\\Computer_structure\\HW4\\main.c",
+  "file": "D:/Limud/Third_year/Computer_structure/HW4/main.c"
+},
+{
+  "directory": "D:/Limud/Third_year/Computer_structure/HW4/build",
+  "command": "g++   -std=c++11  -g -o CMakeFiles\\HW3.dir\\core_api.cpp.obj -c D:\\Limud\\Third_year\\Computer_structure\\HW4\\core_api.cpp",
+  "file": "D:/Limud/Third_year/Computer_structure/HW4/core_api.cpp"
+},
+{
+  "directory": "D:/Limud/Third_year/Computer_structure/HW4/build",
+  "command": "gcc   -std=c99  -g -o CMakeFiles\\HW3.dir\\sim_api.c.obj -c D:\\Limud\\Third_year\\Computer_structure\\HW4\\sim_api.c",
+  "file": "D:/Limud/Third_year/Computer_structure/HW4/sim_api.c"
+}
+]

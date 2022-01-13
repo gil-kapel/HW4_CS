@@ -8,7 +8,14 @@ extern "C" {
 #endif
 
 #include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
 
+#define TRUE 1
+#define FALSE 0
 #define REGS_COUNT 8
 
 typedef enum {
@@ -20,6 +27,7 @@ typedef enum {
     CMD_LOAD,    // dst <- Mem[src1 + src2]  (src2 may be an immediate)
     CMD_STORE,   // Mem[dst + src2] <- src1  (src2 may be an immediate)
 	CMD_HALT,
+	CMD_IDLE,
 } cmd_opcode;
 
 typedef struct _inst {
@@ -34,6 +42,24 @@ typedef struct _regs {
 	int reg[REGS_COUNT];
 } tcontext;
 
+typedef struct{
+	int thread_id;
+	int is_availble;
+	tcontext context;
+	uint32_t rip;
+	uint32_t cycles_count; 
+}thread_args;
+
+typedef struct{
+	thread_args* thread_pool;
+	bool* working_threads;
+	int thread_count;
+	int inst_count;
+}Core;
+
+Core CreateCore(int thread_count);
+
+void coreDestroy(Core* core);
 
 /* Simulates blocked MT and fine-grained MT behavior, respectively */
 void CORE_BlockedMT();
