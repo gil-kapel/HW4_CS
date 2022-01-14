@@ -59,8 +59,8 @@ bool workingThreadsLeft(Core* core){
 	return FALSE;
 }
 
-int nextThread(Core* core, int curr_thread, int _switch){
-	if(core->working_threads[curr_thread] && core->thread_pool[curr_thread].is_availble <= 0) return curr_thread;
+int nextThread(Core* core, int curr_thread, int _switch, bool Fine = FALSE){
+	if(!Fine && core->working_threads[curr_thread] && core->thread_pool[curr_thread].is_availble <= 0) return curr_thread;
 	int iter = (curr_thread + 1) % core->thread_count;
 	int index;
 	for(int i = 0 ; i < core->thread_count ; i++){
@@ -70,9 +70,18 @@ int nextThread(Core* core, int curr_thread, int _switch){
 			return index;
 		}
 	}
+	if(Fine){
+		for(int i = 0 ; i < core->thread_count ; i++){
+			index = (curr_thread + i) % core->thread_count;
+			if(core->working_threads[index]){
+				return index;
+			}
+		}
+	}
 	if(workingThreadsLeft(core)) return curr_thread;
 	else return -2;
 }
+
 
 void tickAllCmd(Core* core, int _switch){
 	for(int i = 0 ; i < core->thread_count ; i++){
@@ -289,7 +298,7 @@ void CORE_FinegrainedMT(){
 		}
 		tickAllCmd(&fine_grained_core, 1);
 		tmp = working_thread;
-		working_thread = nextThread(&fine_grained_core, working_thread, 0);
+		working_thread = nextThread(&fine_grained_core, working_thread, 0, TRUE);
 		if(working_thread == -1){
 			working_thread = tmp;
 		}
