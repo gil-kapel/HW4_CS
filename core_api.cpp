@@ -49,7 +49,18 @@ Core::Core(int thread_count = 0): thread_count(thread_count), inst_count(0) {
 Core blocked_core;
 Core fine_grained_core;
 
+
+bool workingThreadsLeft(Core* core){
+	for(int i = 0 ; i < core->thread_count ; i++){
+		if(core->working_threads[i] == TRUE){
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
 int nextThread(Core* core, int curr_thread, int _switch){
+	if(core->working_threads[curr_thread] && core->thread_pool[curr_thread].is_availble <= 0) return curr_thread;
 	int iter = (curr_thread + 1) % core->thread_count;
 	int index;
 	for(int i = 0 ; i < core->thread_count ; i++){
@@ -59,24 +70,8 @@ int nextThread(Core* core, int curr_thread, int _switch){
 			return index;
 		}
 	}
-	for(int i = 0 ; i < core->thread_count ; i++){
-		index = (curr_thread + i) % core->thread_count;
-		if(core->working_threads[index]){
-			if(i == 0) _switch = 0;
-			core->thread_pool[curr_thread].cycles_count += _switch;
-			return index;
-		}
-	}
-	return -1;
-}
-
-bool workingThreadsLeft(Core* core){
-	for(int i = 0 ; i < core->thread_count ; i++){
-		if(core->working_threads[i] == TRUE){
-			return TRUE;
-		}
-	}
-	return FALSE;
+	if(workingThreadsLeft(core)) return curr_thread;
+	else return -2;
 }
 
 void tickAllCmd(Core* core, int _switch){
@@ -119,17 +114,17 @@ void CORE_BlockedMT() {
 			src2_reg_or_imm = thread.context.reg[src2_reg_or_imm];
 		}
 
-		if(thread.is_availble > 0) inst.opcode = CMD_IDLE;
+		if(thread.is_availble > 0 || blocked_core.working_threads[working_thread] == FALSE) inst.opcode = CMD_IDLE;
 		switch(inst.opcode){
 			case CMD_IDLE:
 				thread.cycles_count++;
 				tmp = working_thread;
+				tickAllCmd(&blocked_core, 1);
 				working_thread = nextThread(&blocked_core, working_thread, _switch);
 				if(tmp != working_thread) tickAllCmd(&blocked_core, _switch);
 				if(working_thread == -1){
 					working_thread = tmp;
 				}
-				tickAllCmd(&blocked_core, 1);
 				break;
 			case CMD_NOP:
 				thread.cycles_count++;
@@ -199,9 +194,13 @@ void CORE_BlockedMT() {
 				thread.cycles_count++;
 				blocked_core.working_threads[working_thread] = FALSE;
 				tickAllCmd(&blocked_core, 1);
+				tmp = working_thread;
 				working_thread = nextThread(&blocked_core, working_thread, _switch);
 				if(tmp != working_thread) tickAllCmd(&blocked_core, _switch);
 				if(working_thread == -1){
+					working_thread = tmp;
+				}
+				if(working_thread == -2){
 					blocked_core.inst_count = inst_count;
 					return;
 				}
@@ -233,7 +232,7 @@ void CORE_FinegrainedMT(){
 		if(inst.isSrc2Imm == FALSE){
 			src2_reg_or_imm = thread.context.reg[src2_reg_or_imm];
 		}
-		if(thread.is_availble > 0) inst.opcode = CMD_IDLE;
+		if(thread.is_availble > 0 || fine_grained_core.working_threads[working_thread] == FALSE) inst.opcode = CMD_IDLE;
 		switch(inst.opcode){
 			case CMD_IDLE:
 				thread.cycles_count++;
@@ -293,6 +292,10 @@ void CORE_FinegrainedMT(){
 		working_thread = nextThread(&fine_grained_core, working_thread, 0);
 		if(working_thread == -1){
 			working_thread = tmp;
+		}
+		if(working_thread == -2){
+			fine_grained_core.inst_count = inst_count;
+			return;
 		}
 	}
 	fine_grained_core.inst_count = inst_count;

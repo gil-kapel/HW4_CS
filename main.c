@@ -6,7 +6,7 @@
 
 int main(int argc, char const *argv[]){
 	// char const *memFname = argv[1];
-	char const memFname[300] = {"D:\\Limud\\Third_year\\Computer_structure\\HW4\\tests\\test2.in"};
+	char const memFname[300] = {"D:\\Limud\\Third_year\\Computer_structure\\HW4\\tests\\example1.img"};
 
 	if (SIM_MemReset(memFname) != 0) {
 		fprintf(stderr, "Failed initializing memory simulator!\n");
