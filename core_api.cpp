@@ -70,7 +70,8 @@ int nextThread(Core* core, int curr_thread, int _switch, bool Fine = FALSE){
 			return index;
 		}
 	}
-	if(Fine){
+	if(Fine){ // only in fine grained = no one is available, if curr_thread finished his code, stay on him, else pass to next working thread
+		if(core->working_threads[curr_thread] == FALSE) return curr_thread;
 		for(int i = 0 ; i < core->thread_count ; i++){
 			index = (curr_thread + i) % core->thread_count;
 			if(core->working_threads[index]){
