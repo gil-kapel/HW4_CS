@@ -4,6 +4,14 @@
 #include "sim_api.h"
 #include <stdio.h>
 
+/**
+ * thread_args- contains specific thread data
+ * @arg thread_id- the thread number
+ * @arg is_availble- how many cycles left for the thread to be able to handle new request. if 0- the thread is ready and can be assigned.
+ * @arg context- thread's registers state
+ * @arg rip- current instruction adress
+ * @arg cycles_count- counts how many cycles the thread has been active or waiting in total.
+ * */
 class thread_args{
 public:
 	int thread_id;
@@ -21,6 +29,13 @@ thread_args::thread_args():thread_id(0), is_availble(0), rip(0), cycles_count(0)
 	}
 }
 
+/**
+ * core- core characterisitics
+ * @arg thread_pool- array of threads that the core can work with (in general)
+ * @arg working_threads- array of working threads- if working_threads[i]==true then the core can assign an instruction to #i thread.
+ * @arg thread_count- number of threads in specific core
+ * @arg inst_count- overall number of instructions the core is executing.
+ * */
 class Core{
 public:
 	thread_args* thread_pool;
@@ -46,10 +61,19 @@ Core::Core(int thread_count = 0): thread_count(thread_count), inst_count(0) {
 	}
 }
 
+//global instances for blocked and fine-graind cores
 Core blocked_core;
 Core fine_grained_core;
 
+/**********************************
+ * helper functions implementation
+ * ********************************/
 
+/**
+ * workingThreadsLeft: checks if there is any availble thread, in specific core
+ * @param core- current core to check for availble threads
+ * @return true if there is availble thread, false otherwise
+ * */
 bool workingThreadsLeft(Core* core){
 	for(int i = 0 ; i < core->thread_count ; i++){
 		if(core->working_threads[i] == TRUE){
@@ -59,6 +83,14 @@ bool workingThreadsLeft(Core* core){
 	return FALSE;
 }
 
+/**
+ * nextThread: if context-switch is needed- search for the next thread to execute.
+ * @param core- current core.
+ * @param curr_thread- current thread.
+ * @param _switch- context-switch penalty.
+ * @param Fine- true if core is fine-grained, false otherwise.
+ * @return next thread's number
+ * */
 int nextThread(Core* core, int curr_thread, int _switch, bool Fine = FALSE){
 	if(!Fine && core->working_threads[curr_thread] && core->thread_pool[curr_thread].is_availble <= 0) return curr_thread;
 	int iter = (curr_thread + 1) % core->thread_count;
@@ -83,7 +115,11 @@ int nextThread(Core* core, int curr_thread, int _switch, bool Fine = FALSE){
 	else return -2;
 }
 
-
+/**
+ * tickAllCmd: increase all working threads by context-switch's cycles number.
+ * @param core- current core.
+ * @param _switch- context-switch penalty.
+ * */
 void tickAllCmd(Core* core, int _switch){
 	for(int i = 0 ; i < core->thread_count ; i++){
 		if(core->thread_pool[i].is_availble > 0){
@@ -92,6 +128,11 @@ void tickAllCmd(Core* core, int _switch){
 	}
 }
 
+/**
+ * countCycles: counts overall cycles number in all threads combined, in a specific core.
+ * @param core- current core.
+ * @return overall cycles number
+ * */
 int countCycles(Core* core){
 	int cycles = 0;
 	for(int i = 0 ; i < core->thread_count ; i++){
@@ -100,6 +141,9 @@ int countCycles(Core* core){
 	return cycles;
 }
 
+/******************************
+ * HW functions implementation
+ * ***************************/
 void CORE_BlockedMT() {
 	int load_latency = SIM_GetLoadLat();
 	int store_latency = SIM_GetStoreLat();
